@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% macro subject_dept(parent, prefix='') %}
+  {% for d in deps if (d.parent_id or 0)==parent %}
+  <div class="tree-group open" data-tree-group>
+    <div class="tree-line"><button type="button" class="tree-toggle" data-tree-toggle>▾</button><span class="tree-node pick subject-pick" data-stype="department" data-sid="{{d.id}}" data-label="部门：{{d.name}}">🏢 {{d.name}}</span></div>
+    <div class="tree-children">
+      {% if user.role=='admin' %}
+      {% for u in users if u.department_id==d.id %}
+      <div class="tree-line"><button type="button" class="tree-toggle blank"></button><span class="tree-node pick subject-pick" data-stype="user" data-sid="{{u.id}}" data-label="用户：{{u.username}}">👤 {{u.display_name or u.username}}</span></div>
+      {% endfor %}
+      {% endif %}
+      {{ subject_dept(d.id) }}
+    </div>
+  </div>
+  {% endfor %}
+{% endmacro %}
+{% macro perm_checks(p=None) %}
+<div class="perm-grid pretty-perms">
+  <label><input type="checkbox" name="can_read" {% if not p or p.can_read %}checked{% endif %}>访问</label>
+  <label><input type="checkbox" name="can_preview" {% if not p or p.can_preview %}checked{% endif %}>预览</label>
+  <label><input type="checkbox" name="can_download" {% if not p or p.can_download %}checked{% endif %}>下载</label>
+  <label><input type="checkbox" name="can_upload" {% if p and p.can_upload %}checked{% endif %}>上传/新建</label>
+  <label><input type="checkbox" name="can_share" {% if p and p.can_share %}checked{% endif %}>分享</label>
+  <label><input type="checkbox" name="can_rename" {% if p and p.can_rename %}checked{% endif %}>重命名</label>
+  <label><input type="checkbox" name="can_move" {% if p and p.can_move %}checked{% endif %}>移动</label>
+  <label><input type="checkbox" name="can_delete" {% if p and p.can_delete %}checked{% endif %}>删除</label>
+  <label><input type="checkbox" name="can_admin" {% if p and p.can_admin %}checked{% endif %}>管理</label>
+</div>
+{% endmacro %}
+{% macro subject_picker(prefix, p=None) %}
+<input type="hidden" name="subject_type" value="{{p.subject_type if p else 'all'}}" data-subject-type>
+<input type="hidden" name="subject_id" value="{{p.subject_id or 0 if p else 0}}" data-subject-id>
+<div class="picked-box">当前主体：<b data-subject-label>{% if p %}{{p.subject_type}}:{{p.subject_id or ''}}{% else %}所有人{% endif %}</b></div>
+<div class="tree-picker subject-tree">
+  <input class="combo-search" placeholder="搜索用户或部门" data-tree-search="subTree{{prefix}}">
+  <div id="subTree{{prefix}}">
+    <div class="tree-line"><button type="button" class="tree-toggle blank"></button><span class="tree-node pick subject-pick active" data-stype="all" data-sid="0" data-label="所有人">🌐 所有人</span></div>
+    {{ subject_dept(0) }}
+    {% if user.role=='admin' %}
+    {% for u in users if not u.department_id %}
+    <div class="tree-line"><button type="button" class="tree-toggle blank"></button><span class="tree-node pick subject-pick" data-stype="user" data-sid="{{u.id}}" data-label="用户：{{u.username}}">👤 {{u.display_name or u.username}}（无部门）</span></div>
+    {% endfor %}
+    {% endif %}
+  </div>
+</div>
+{% endmacro %}
+{% block content %}
+<div class="page-head">
+  <div><h2>{{theme.menus.permissions}}</h2><p>按树状主体选择用户/部门，为空间、文件夹、文件、打印机配置权限。</p></div>
+  <button class="btn primary" data-modal="modalAddPerm">添加权限</button>
+</div>
+<form class="card search-grid" method="get">
+  <input name="q" value="{{q or ''}}" placeholder="搜索主体、资源、路径、效果">
+  <button class="btn primary">搜索</button>
+</form>
+<div class="card info">规则：拒绝优先于允许。新建用户默认没有团队空间权限；只能访问自己创建或被授权的共享资源。</div>
+<div class="table-card"><table>
+<tr><th>主体</th><th>用户名</th><th>资源</th><th>效果</th><th>权限</th><th class="right">操作</th></tr>
+{% for p in perms %}
+{% set pkey = p.resource_type ~ '|' ~ p.resource_id ~ '|' ~ (p.rel_path or '') %}
+<tr><td>{{p.subject_type}}:{{p.subject_id or ''}}{% if p.subject_label %}<br><span class="muted">{{p.subject_label}}</span>{% endif %}</td><td>{{p.subject_user or '-'}}</td><td>{{p.resource_type}}:{{p.resource_id}}{% if p.rel_path %}<br><span class="muted">{{p.rel_path}}</span>{% endif %}</td><td>{{p.effect}}</td><td class="perm-text">访问{{p.can_read}} 预览{{p.can_preview}} 下载{{p.can_download}} 上传{{p.can_upload}} 分享{{p.can_share}} 改名{{p.can_rename}} 移动{{p.can_move}} 删除{{p.can_delete}} 管理{{p.can_admin}}</td>
+<td class="right"><div class="row-actions"><button class="icon-btn" type="button" data-menu="permMenu{{loop.index}}">⋯</button><div id="permMenu{{loop.index}}" class="menu-pop row-menu"><button type="button" data-modal="editPerm{{loop.index}}">编辑</button><button type="button" data-modal="delPerm{{loop.index}}" class="danger-text">删除</button></div></div>
+<div id="editPerm{{loop.index}}" class="modal"><div class="modal-card permission-modal"><div class="modal-head"><b>编辑权限</b><button type="button" class="modal-x" data-close>×</button></div><form method="post" action="/permissions/edit" class="form-grid perm-form"><input type="hidden" name="perm_id" value="{{p.id}}">
+  <div class="grid-2"><div class="field-block wide"><div class="field-title">选择主体</div>{{ subject_picker('Edit' ~ loop.index, p) }}</div>
+  <label>资源类型<select class="res-type"><option value="space" {% if p.resource_type=='space' %}selected{% endif %}>空间</option><option value="folder" {% if p.resource_type=='folder' %}selected{% endif %}>文件夹</option><option value="file" {% if p.resource_type=='file' %}selected{% endif %}>文件</option><option value="printer" {% if p.resource_type=='printer' %}selected{% endif %}>打印机</option></select></label>
+  <label>资源<select name="resource_key" class="res-select"><option value="" data-empty="1" disabled>无资源</option>{% for r in resources %}<option data-kind="{{r.kind}}" value="{{r.key}}" {% if r.key==pkey %}selected{% endif %}>{{r.label}}</option>{% endfor %}</select></label>
+  <label>效果<select name="effect"><option value="allow" {% if p.effect=='allow' %}selected{% endif %}>允许</option><option value="deny" {% if p.effect=='deny' %}selected{% endif %}>拒绝</option></select></label></div>
+  <div class="field-title">权限项</div>{{ perm_checks(p) }}<div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn primary">保存</button></div>
+</form></div></div>
+<div id="delPerm{{loop.index}}" class="modal"><div class="modal-card modal-sm"><div class="modal-head"><b>删除权限</b><button type="button" class="modal-x" data-close>×</button></div><p>确定删除这条权限吗？</p><form method="post" action="/permissions/delete"><input type="hidden" name="perm_id" value="{{p.id}}"><div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn danger">删除</button></div></form></div></div>
+</td></tr>{% endfor %}</table></div>
+
+<div id="modalAddPerm" class="modal"><div class="modal-card permission-modal"><div class="modal-head"><b>添加权限</b><button type="button" class="modal-x" data-close>×</button></div>
+<form method="post" class="form-grid perm-form">
+  <div class="grid-2"><div class="field-block wide"><div class="field-title">选择主体</div>{{ subject_picker('Add') }}</div>
+  <label>资源类型<select class="res-type"><option value="space">空间</option><option value="folder">文件夹</option><option value="file">文件</option><option value="printer">打印机</option></select></label>
+  <label>资源<select name="resource_key" class="res-select"><option value="" data-empty="1" disabled>无资源</option>{% for r in resources %}<option data-kind="{{r.kind}}" value="{{r.key}}">{{r.label}}</option>{% endfor %}</select></label>
+  <label>效果<select name="effect"><option value="allow">允许</option><option value="deny">拒绝</option></select></label></div>
+  <div class="field-title">权限项</div>{{ perm_checks() }}<div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn primary">添加</button></div>
+</form></div></div>
+<script>
+(function(){
+  function updateResource(form){
+    const typ=form.querySelector('.res-type'); const sel=form.querySelector('.res-select'); if(!typ||!sel) return;
+    let first=null; const empty=Array.from(sel.options).find(o=>o.dataset.empty==='1');
+    Array.from(sel.options).forEach(o=>{
+      if(o.dataset.empty==='1') return;
+      const ok=o.dataset.kind===typ.value;
+      o.hidden=!ok; o.disabled=!ok;
+      if(ok&&!first) first=o;
+    });
+    if(first){
+      if(empty){ empty.hidden=true; empty.disabled=true; }
+      sel.disabled=false;
+      if(!sel.selectedOptions[0] || sel.selectedOptions[0].disabled || sel.selectedOptions[0].dataset.empty==='1') sel.value=first.value;
+    }else{
+      if(empty){ empty.hidden=false; empty.disabled=false; empty.textContent='无资源'; sel.value=''; }
+      sel.disabled=true;
+    }
+  }
+  document.querySelectorAll('.perm-form').forEach(updateResource);
+  document.addEventListener('change', e=>{ if(e.target.classList.contains('res-type')) updateResource(e.target.closest('.perm-form')); });
+  document.addEventListener('click', e=>{
+    const n=e.target.closest('.subject-pick'); if(!n) return;
+    const form=n.closest('form'); if(!form) return;
+    form.querySelector('[data-subject-type]').value=n.dataset.stype;
+    form.querySelector('[data-subject-id]').value=n.dataset.sid||0;
+    form.querySelector('[data-subject-label]').textContent=n.dataset.label||n.textContent.trim();
+    form.querySelectorAll('.subject-pick.active').forEach(x=>x.classList.remove('active'));
+    n.classList.add('active');
+  });
+})();
+</script>
+{% endblock %}

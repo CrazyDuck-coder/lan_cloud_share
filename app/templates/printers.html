@@ -1,0 +1,41 @@
+
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <div><h2>{{theme.menus.printers}}</h2><p>可登记当前运行程序主机上的打印机；局域网用户可下载连接脚本添加共享打印机。</p></div>
+  <button class="btn primary" data-modal="modalAddPrinter">手动添加打印机</button>
+</div>
+
+<div class="card info">
+  提示：网页服务只能查询“运行本程序的电脑”的打印机。若要共享某台客户端电脑的打印机，需要在那台电脑上运行本程序或手动填写该打印机的 UNC 共享地址。
+</div>
+
+<div class="card"><h3>本机打印机</h3>
+<table><tr><th>名称</th><th>驱动</th><th>端口</th><th>已共享</th><th class="right">操作</th></tr>
+{% for lp in local_printers %}
+<tr><td>{{lp.Name}}</td><td>{{lp.DriverName}}</td><td>{{lp.PortName}}</td><td>{{lp.Shared}}</td><td class="right">
+<form method="post" action="/printers"><input type="hidden" name="name" value="{{lp.Name}}"><input type="hidden" name="driver" value="{{lp.DriverName}}"><input type="hidden" name="share_name" value="{{lp.ShareName or lp.Name}}"><input type="hidden" name="do_share" value="on"><button class="btn primary small">加入共享</button></form>
+</td></tr>
+{% endfor %}
+{% if not local_printers %}<tr><td colspan="5" class="center">未查询到打印机，或当前系统不支持自动查询。可点击右上角手动添加。</td></tr>{% endif %}
+</table></div>
+
+<div class="table-card"><table><tr><th>ID</th><th>名称</th><th>地址</th><th>共享名</th><th>驱动</th><th>备注</th><th>启用</th><th class="right">操作</th></tr>
+{% for p in printers %}
+<tr><td>{{p.id}}</td><td>{{p.name}}</td><td>{{p.address}}</td><td>{{p.share_name}}</td><td>{{p.driver}}</td><td>{{p.note}}</td><td>{{'是' if p.active else '否'}}</td><td class="right">
+<div class="row-actions"><button class="icon-btn" data-menu="prMenu{{loop.index}}" type="button">⋯</button><div id="prMenu{{loop.index}}" class="menu-pop row-menu">
+<a href="/printers/connect/{{p.id}}">下载连接脚本</a>
+{% if user.role=='admin' or p.owner_id==user.id %}<button type="button" data-modal="editPr{{loop.index}}">编辑</button><button type="button" data-modal="delPr{{loop.index}}" class="danger-text">删除</button>{% endif %}
+</div></div>
+
+{% if user.role=='admin' or p.owner_id==user.id %}
+<div id="editPr{{loop.index}}" class="modal"><div class="modal-card"><div class="modal-head"><b>编辑打印机</b><button type="button" class="modal-x" data-close>×</button></div><form method="post" action="/printers/edit" class="form-grid"><input type="hidden" name="printer_id" value="{{p.id}}"><div class="grid-2"><label>名称<input name="name" value="{{p.name}}"></label><label>地址<input name="address" value="{{p.address}}"></label><label>共享名<input name="share_name" value="{{p.share_name}}"></label><label>驱动<input name="driver" value="{{p.driver}}"></label><label>备注<input name="note" value="{{p.note}}"></label><div class="field-block"><div class="field-title">启用</div><label class="check-inline"><input type="checkbox" name="active" {% if p.active %}checked{% endif %}>允许用户使用</label></div></div><div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn primary">保存</button></div></form></div></div>
+<div id="delPr{{loop.index}}" class="modal"><div class="modal-card modal-sm"><div class="modal-head"><b>删除打印机</b><button type="button" class="modal-x" data-close>×</button></div><p>确定删除 {{p.name}}？</p><form method="post" action="/printers/delete"><input type="hidden" name="printer_id" value="{{p.id}}"><div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn danger">删除</button></div></form></div></div>
+{% endif %}
+</td></tr>
+{% endfor %}
+{% if not printers %}<tr><td colspan="8" class="center">暂无可连接的共享打印机。</td></tr>{% endif %}
+</table></div>
+
+<div id="modalAddPrinter" class="modal"><div class="modal-card"><div class="modal-head"><b>手动添加打印机</b><button type="button" class="modal-x" data-close>×</button></div><form method="post" class="form-grid"><div class="grid-2"><label>名称<input name="name"></label><label>共享地址<input name="address" placeholder="例如 \\电脑名\打印机共享名"></label><label>共享名<input name="share_name"></label><label>驱动<input name="driver"></label><label>备注<input name="note"></label><div class="field-block"><div class="field-title">启用</div><label class="check-inline"><input type="checkbox" checked disabled>添加后启用</label></div></div><div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn primary">添加</button></div></form></div></div>
+{% endblock %}

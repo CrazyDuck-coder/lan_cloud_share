@@ -1,0 +1,14 @@
+# LAN Cloud Share 配置示例
+database:
+  type: sqlite  # sqlite / mysql / postgresql
+  sqlite_path: './app/data/app.db'
+  mysql_url: 'mysql+pymysql://user:password@127.0.0.1:3306/lan_cloud_share'
+  postgresql_url: 'postgresql+psycopg2://user:password@127.0.0.1:5432/lan_cloud_share'
+
+server:
+  host: '0.0.0.0'
+  port: 8000
+
+office:
+  onlyoffice_url: ''
+  collabora_url: ''

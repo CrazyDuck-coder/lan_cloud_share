@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head"><div><h2>{{theme.menus.versions}}</h2><p>查询文件历史版本，可恢复旧版本覆盖当前文件。</p></div></div>
+<form class="card one-line-filter version-search" action="/versions/search">
+  <input type="date" name="start" value="{{start or ''}}" title="开始日期">
+  <input type="date" name="end" value="{{end or ''}}" title="结束日期">
+  <input name="filename" value="{{filename or ''}}" placeholder="文件名">
+  {% if user.role=='admin' %}
+  <label class="combo-label version-user-field">
+    <input name="username" id="verUsername" value="{{username or ''}}" placeholder="用户" readonly>
+    <button type="button" class="combo-arrow" data-dropdown="verUserDrop">▾</button>
+    <div id="verUserDrop" class="combo-panel wide-panel">
+      {% for u in users %}<label class="check-row"><input type="checkbox" data-fill-list="verUsername" value="{{u.username}}">👤 {{u.username}}</label>{% endfor %}
+    </div>
+  </label>
+  <select name="department_id" title="用户组/部门">
+    <option value="0">全部用户组</option>
+    {% for d in deps %}<option value="{{d.id}}" {% if department_id==d.id %}selected{% endif %}>{{d.name}}</option>{% endfor %}
+  </select>
+  {% endif %}
+  <input name="keyword" value="{{q or ''}}" placeholder="关键字">
+  <button class="btn primary">搜索</button>
+</form>
+<div class="table-card"><table><tr><th>时间</th><th>空间ID</th><th>文件</th>{% if user.role=='admin' %}<th>用户</th>{% endif %}<th>动作</th><th>版本</th><th>归档路径</th><th class="right">操作</th></tr>
+{% for v in versions %}
+<tr><td>{{v.created_at}}</td><td>{{v.space_id}}</td><td>{{v.rel_path}}</td>{% if user.role=='admin' %}<td>{{v.username or v.user_id}}</td>{% endif %}<td>{{v.action}}</td><td>{{v.version_no}}</td><td class="path-cell">{{v.stored_path}}</td><td class="right">{% if user.role=='admin' %}<button class="btn primary small" data-modal="restoreV{{loop.index}}">恢复</button>{% else %}<span class="muted">-</span>{% endif %}
+{% if user.role=='admin' %}<div id="restoreV{{loop.index}}" class="modal"><div class="modal-card modal-sm"><div class="modal-head"><b>恢复版本</b><button type="button" class="modal-x" data-close>×</button></div><p>确定恢复这个版本并覆盖当前文件吗？</p><form method="post" action="/versions/restore"><input type="hidden" name="version_id" value="{{v.id}}"><div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn primary">恢复</button></div></form></div></div>{% endif %}</td></tr>
+{% endfor %}
+</table></div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head"><div><h2>{{theme.menus.logs}}</h2><p>按日期、用户、动作和关键字搜索操作日志。</p></div></div>
+<form class="card one-line-filter log-search" method="get">
+  <input type="date" name="start" value="{{start}}" title="开始日期">
+  <input type="date" name="end" value="{{end}}" title="结束日期">
+  <label class="combo-label">
+    <input name="username" id="logUsername" value="{{username}}" placeholder="用户，可多选" readonly>
+    <button type="button" class="combo-arrow" data-dropdown="logUserDrop">▾</button>
+    <div id="logUserDrop" class="combo-panel wide-panel">
+      {% for u in log_users %}<label class="check-row"><input type="checkbox" data-fill-list="logUsername" value="{{u.username}}">👤 {{u.username}}</label>{% endfor %}
+    </div>
+  </label>
+  <label class="combo-label">
+    <input name="action" id="logAction" value="{{action}}" placeholder="动作，可多选" readonly>
+    <button type="button" class="combo-arrow" data-dropdown="logActionDrop">▾</button>
+    <div id="logActionDrop" class="combo-panel wide-panel">
+      {% for a in log_actions %}<label class="check-row"><input type="checkbox" data-fill-list="logAction" value="{{a.action}}">{{a.action}}</label>{% endfor %}
+    </div>
+  </label>
+  <input name="keyword" value="{{keyword}}" placeholder="关键字/IP/详情">
+  <button class="btn primary">搜索</button>
+</form>
+<div class="table-card"><table><tr><th>时间</th><th>用户ID</th><th>用户</th><th>动作</th><th>详情</th><th>IP</th><th class="right">操作</th></tr>{% for l in logs %}<tr><td>{{l.created_at}}</td><td>{{l.user_id}}</td><td>{{l.username}}</td><td>{{l.action}}</td><td>{{l.detail}}</td><td>{{l.ip}}</td><td class="right"><div class="row-actions"><button class="icon-btn" data-menu="logMenu{{loop.index}}" type="button">⋯</button><div id="logMenu{{loop.index}}" class="menu-pop row-menu"><button type="button" data-modal="editLog{{loop.index}}">修改</button><button type="button" data-modal="delLog{{loop.index}}" class="danger-text">删除</button></div></div>
+<div id="editLog{{loop.index}}" class="modal"><div class="modal-card modal-sm"><div class="modal-head"><b>修改日志</b><button type="button" class="modal-x" data-close>×</button></div><form method="post" action="/logs/edit" class="form-grid"><input type="hidden" name="log_id" value="{{l.id}}"><label>动作<input name="action" value="{{l.action}}"></label><label>详情<input name="detail" value="{{l.detail}}"></label><label>IP<input name="ip" value="{{l.ip}}"></label><div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn primary">保存</button></div></form></div></div>
+<div id="delLog{{loop.index}}" class="modal"><div class="modal-card modal-sm"><div class="modal-head"><b>删除日志</b><button type="button" class="modal-x" data-close>×</button></div><p>确定删除这条日志吗？</p><form method="post" action="/logs/delete"><input type="hidden" name="log_id" value="{{l.id}}"><div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn danger">删除</button></div></form></div></div>
+</td></tr>{% endfor %}</table></div>
+{% endblock %}

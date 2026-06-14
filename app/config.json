@@ -1,0 +1,11 @@
+{
+  "port": 8000,
+  "db_backend": "sqlite",
+  "db_path": "data/app.db",
+  "db_url": "",
+  "storage_root": "data/storage",
+  "secret_key": "change-me",
+  "restart_command": "",
+  "onlyoffice_url": "",
+  "collabora_url": ""
+}

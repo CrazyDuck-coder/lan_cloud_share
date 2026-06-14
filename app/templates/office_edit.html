@@ -1,0 +1,16 @@
+
+{% extends "base.html" %}
+{% block content %}
+{% set parent = '/'.join(rel_path.split('/')[:-1]) %}
+<div class="page-head"><div><h2>在线编辑：{{rel_path.split('/')[-1]}}</h2><p>Office 在线编辑需要 OnlyOffice 或 Collabora 服务。</p></div><div class="head-actions"><a class="btn ghost" href="/files?space_id={{space.id}}&path={{parent}}">返回上一文件夹</a><a class="btn primary" href="/download/{{space.id}}/{{rel_path}}">下载原文件</a></div></div>
+<div class="card">
+  {% if onlyoffice_url or collabora_url %}
+  <p class="muted">已检测到在线编辑服务配置。这里预留对接入口，部署 OnlyOffice Document Server 或 Collabora 后，需要配置文档回调和签名。</p>
+  <iframe class="viewer" src="{{onlyoffice_url or collabora_url}}"></iframe>
+  {% else %}
+  <h3>未配置在线编辑服务</h3>
+  <p>请先部署 OnlyOffice Document Server 或 Collabora，并在系统设置中填写服务地址。当前程序可预览 PDF、图片、文本和压缩包；Office 文档在线编辑必须依赖专用 Office 服务。</p>
+  <p class="muted">建议地址示例：OnlyOffice Document Server: http://服务器IP:8080/；Collabora: http://服务器IP:9980/</p>
+  {% endif %}
+</div>
+{% endblock %}

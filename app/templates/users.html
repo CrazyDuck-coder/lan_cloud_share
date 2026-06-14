@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head"><div><h2>{{theme.menus.users}}</h2><p>管理账号、部门、角色和密码。左侧树可快速查看部门与用户归属。</p></div><button class="btn primary" data-modal="modalAddUser">添加用户</button></div>
+
+<div class="split">
+  <div class="card tree-card">
+    <h3>部门用户树</h3>
+    <input class="combo-search" placeholder="搜索部门或用户" data-tree-search="userTree">
+    <div id="userTree" class="tree-picker inline-tree">
+    {% macro dept_node(parent) %}
+      {% for d in deps if (d.parent_id or 0)==parent %}
+        <div class="tree-group" data-tree-group>
+          <div class="tree-line"><button type="button" class="tree-toggle" data-tree-toggle>▸</button><span class="tree-node">🏢 {{d.name}}</span></div>
+          <div class="tree-children">
+            {% for u in users if u.department_id==d.id %}
+              <div class="tree-line"><button type="button" class="tree-toggle blank"></button><span class="tree-node user">👤 {{u.display_name or u.username}}</span></div>
+            {% endfor %}
+            {{ dept_node(d.id) }}
+          </div>
+        </div>
+      {% endfor %}
+      {% if parent==0 %}
+        {% for u in users if not u.department_id %}
+          <div class="tree-line"><button type="button" class="tree-toggle blank"></button><span class="tree-node user">👤 {{u.display_name or u.username}}（无部门）</span></div>
+        {% endfor %}
+      {% endif %}
+    {% endmacro %}
+    {{ dept_node(0) }}
+    </div>
+  </div>
+
+  <div class="table-card flex-table">
+    <table><tr><th>ID</th><th>用户名</th><th>显示名</th><th>角色</th><th>部门</th><th>启用</th><th class="right">操作</th></tr>
+    {% for u in users %}
+    <tr><td>{{u.id}}</td><td>{{u.username}}</td><td>{{u.display_name}}</td><td>{{u.role}}</td><td>{{u.dep or ''}}</td><td>{{'是' if u.active else '否'}}</td>
+    <td class="right"><div class="row-actions"><button class="icon-btn" data-menu="uMenu{{loop.index}}" type="button">⋯</button><div id="uMenu{{loop.index}}" class="menu-pop row-menu"><button type="button" data-modal="editU{{loop.index}}">编辑/移动</button><button type="button" data-modal="resetU{{loop.index}}">重置密码</button><button type="button" data-modal="delU{{loop.index}}" class="danger-text">删除</button></div></div>
+    <div id="editU{{loop.index}}" class="modal"><div class="modal-card"><div class="modal-head"><b>编辑用户</b><button type="button" class="modal-x" data-close>×</button></div><form method="post" action="/users/edit" class="form-grid"><input type="hidden" name="user_id" value="{{u.id}}"><div class="grid-2"><label>用户名<input name="username" value="{{u.username}}"></label><label>显示名<input name="display_name" value="{{u.display_name or ''}}"></label><label>角色<select name="role"><option value="user" {% if u.role=='user' %}selected{% endif %}>user</option><option value="admin" {% if u.role=='admin' %}selected{% endif %}>admin</option></select></label><label>部门<select name="department_id"><option value="0">无部门</option>{% for d in deps %}<option value="{{d.id}}" {% if u.department_id==d.id %}selected{% endif %}>{{d.name}}</option>{% endfor %}</select></label><div class="field-block"><div class="field-title">启用</div><label class="check-inline"><input type="checkbox" name="active" {% if u.active %}checked{% endif %}>允许登录</label></div></div><div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn primary">保存</button></div></form></div></div>
+    <div id="resetU{{loop.index}}" class="modal"><div class="modal-card modal-sm"><div class="modal-head"><b>重置密码</b><button type="button" class="modal-x" data-close>×</button></div><form method="post" action="/users/reset" class="form-grid"><input type="hidden" name="user_id" value="{{u.id}}"><label>新密码<input name="password" type="password"></label><div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn primary">重置</button></div></form></div></div>
+    <div id="delU{{loop.index}}" class="modal"><div class="modal-card modal-sm"><div class="modal-head"><b>删除用户</b><button type="button" class="modal-x" data-close>×</button></div><p>确定删除 {{u.username}}？</p><form method="post" action="/users/delete"><input type="hidden" name="user_id" value="{{u.id}}"><div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn danger">删除</button></div></form></div></div>
+    </td></tr>
+    {% endfor %}</table>
+  </div>
+</div>
+
+<div id="modalAddUser" class="modal"><div class="modal-card"><div class="modal-head"><b>添加用户</b><button type="button" class="modal-x" data-close>×</button></div><form method="post" class="form-grid"><div class="grid-2"><label>用户名<input name="username"></label><label>显示名<input name="display_name"></label><label>密码<input name="password" type="password"></label><label>角色<select name="role"><option value="user">user</option><option value="admin">admin</option></select></label><label>部门<select name="department_id"><option value="0">无部门</option>{% for d in deps %}<option value="{{d.id}}">{{d.name}}</option>{% endfor %}</select></label></div><div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn primary">添加</button></div></form></div></div>
+{% endblock %}

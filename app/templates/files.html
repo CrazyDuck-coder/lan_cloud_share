@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block content %}
+{% set file_base = '/team_files' if mode=='team' else '/files' %}
+{% macro file_share_dept(parent) %}
+  {% for d in all_deps if (d.parent_id or 0)==parent %}
+  <div class="tree-group" data-tree-group>
+    <div class="tree-line"><button type="button" class="tree-toggle" data-tree-toggle>▸</button><span class="tree-node share-pick" data-type="department" data-id="{{d.id}}" data-label="部门：{{d.name}}">🏢 {{d.name}}</span></div>
+    <div class="tree-children">
+      {% for u in all_users if u.department_id==d.id %}
+      <div class="tree-line"><button type="button" class="tree-toggle blank"></button><span class="tree-node share-pick" data-type="user" data-id="{{u.id}}" data-label="用户：{{u.username}}">👤 {{u.display_name or u.username}}</span></div>
+      {% endfor %}
+      {{ file_share_dept(d.id) }}
+    </div>
+  </div>
+  {% endfor %}
+{% endmacro %}
+<div class="page-head">
+  <div><h2>{{theme.menus.files}}</h2><p>{{'当前团队空间' if mode=='team' else '当前共享'}}：{% if space %}<b>{{space.name}}</b>{% if path %} / {{path}}{% endif %}{% else %}{{'团队空间列表' if mode=='team' else '共享列表'}}{% endif %}</p></div>
+  <div class="head-actions">{% if mode=='shared' %}<a class="btn ghost" href="{{file_base}}?space_id=-1">共享列表</a><button class="btn primary" data-modal="modalLocalShare">新建本机共享</button>{% else %}<a class="btn ghost" href="/spaces">团队空间列表</a>{% endif %}{% if space and can_upload_current %}<button class="btn primary" data-modal="modalMkdir">新建文件夹</button><button class="btn primary" data-modal="modalUpload">上传文件</button>{% endif %}</div>
+</div>
+{% if space %}<div class="card slim">{% if path %}<a href="{{file_base}}?space_id={{space.id}}&path={{'/'.join(path.split('/')[:-1])}}">⬆ 返回上一级文件夹</a>{% else %}<a href="{{'/spaces' if mode=='team' else file_base ~ '?space_id=-1'}}">⬅ 返回{{'团队空间列表' if mode=='team' else '共享列表'}}</a><span class="muted" style="margin-left:12px">当前已在根目录</span>{% endif %}</div>{% endif %}
+<div id="modalLocalShare" class="modal"><div class="modal-card"><div class="modal-head"><b>创建本机共享文件夹</b><button type="button" class="modal-x" data-close>×</button></div>
+<form method="post" action="/spaces" class="form-grid"><input type="hidden" name="kind" value="shared">
+<div class="grid-2"><label>共享名称<input name="name" placeholder="例如：我的共享"></label><label>本机路径<div class="path-row"><input name="root_path" placeholder="选择或填写本机文件夹路径" data-folder-target="localSharePath"><button type="button" class="btn ghost fake-folder-btn">选择文件夹<input type="file" webkitdirectory directory data-folder-input="localSharePath"></button></div></label><label>备注<input name="note"></label></div>
+<div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn primary">创建</button></div></form></div></div>
+{% if not space %}
+<div class="card slim share-list-tools share-list-tools-clean">
+  <div class="share-filter-row">
+    <input id="shareListFilter" placeholder="筛选共享名称、主机名、IP、路径、说明" onkeydown="if(event.key==='Enter'){event.preventDefault();filterShareList();}">
+    <button type="button" class="btn primary" onclick="filterShareList()">搜索</button>
+  </div>
+  <div class="share-col-row">
+    <span class="muted">显示列：</span>
+    <label><input type="checkbox" data-col-toggle="1" checked> 主机名</label>
+    <label><input type="checkbox" data-col-toggle="2" checked> IP</label>
+    <label><input type="checkbox" data-col-toggle="3" checked> 路径</label>
+    <label><input type="checkbox" data-col-toggle="4" checked> 说明</label>
+  </div>
+</div>
+<div class="table-card"><table id="shareListTable"><thead><tr><th data-sort-col="0">共享名称</th><th data-sort-col="1">主机名</th><th data-sort-col="2">IP</th><th data-sort-col="3">路径</th><th data-sort-col="4">说明</th><th class="right">操作</th></tr></thead><tbody>{% for s in spaces %}<tr><td>📁 <a href="{{file_base}}?space_id={{s.id}}">{{s.name}}</a></td><td>{{s.host_name or ''}}</td><td>{{s.host_ip or ''}}</td><td>{{s.root_path}}</td><td>{{s.note}}</td><td class="right"><div class="row-actions"><button class="icon-btn" type="button" data-menu="shareSpaceMenu{{loop.index}}">⋯</button><div id="shareSpaceMenu{{loop.index}}" class="menu-pop row-menu"><a href="{{file_base}}?space_id={{s.id}}">打开</a>{% if user.role=='admin' or s.owner_id==user.id %}<button type="button" data-modal="editShareSpace{{loop.index}}">编辑</button><button type="button" data-modal="delShareSpace{{loop.index}}" class="danger-text">删除记录</button>{% endif %}</div></div>{% if user.role=='admin' or s.owner_id==user.id %}<div id="editShareSpace{{loop.index}}" class="modal"><div class="modal-card"><div class="modal-head"><b>编辑本机共享</b><button type="button" class="modal-x" data-close>×</button></div><form method="post" action="/spaces/edit" class="form-grid"><input type="hidden" name="space_id" value="{{s.id}}"><div class="grid-2"><label>共享名称<input name="name" value="{{s.name}}"></label><label>本机路径<input name="root_path" value="{{s.root_path}}"></label><label>备注<input name="note" value="{{s.note}}"></label></div><div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn primary">保存</button></div></form></div></div><div id="delShareSpace{{loop.index}}" class="modal"><div class="modal-card modal-sm"><div class="modal-head"><b>删除共享记录</b><button type="button" class="modal-x" data-close>×</button></div><p>只删除系统共享记录，不删除磁盘文件。确定删除 “{{s.name}}” 吗？</p><form method="post" action="/spaces/delete"><input type="hidden" name="space_id" value="{{s.id}}"><div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn danger">删除</button></div></form></div></div>{% endif %}</td></tr>{% endfor %}{% if not spaces %}<tr><td colspan="6" class="center">{{'暂无可访问团队空间，请联系管理员授权。' if mode=='team' else '暂无可访问共享文件夹，可以点击右上角创建本机共享。'}}</td></tr>{% endif %}</tbody></table></div>
+<script>
+function filterShareList(){const q=(document.getElementById('shareListFilter')?.value||'').toLowerCase();document.querySelectorAll('#shareListTable tbody tr').forEach(tr=>{tr.style.display=tr.innerText.toLowerCase().includes(q)?'':'none';});}
+document.querySelectorAll('[data-col-toggle]').forEach(cb=>cb.addEventListener('change',()=>{const n=Number(cb.dataset.colToggle)+1;document.querySelectorAll('#shareListTable tr').forEach(tr=>{const c=tr.children[n-1]; if(c)c.style.display=cb.checked?'':'none';});}));
+document.querySelectorAll('#shareListTable th[data-sort-col]').forEach(th=>th.addEventListener('click',()=>{const idx=Number(th.dataset.sortCol),tb=document.querySelector('#shareListTable tbody');const rows=[...tb.querySelectorAll('tr')].filter(r=>r.children.length>1);const asc=th.dataset.asc!=='1';rows.sort((a,b)=>(a.children[idx].innerText||'').localeCompare(b.children[idx].innerText||'', 'zh-Hans', {numeric:true})*(asc?1:-1));rows.forEach(r=>tb.appendChild(r));th.dataset.asc=asc?'1':'0';}));
+</script>
+{% else %}
+<div class="table-card"><table><tr><th>名称</th><th>大小</th><th>修改时间</th><th class="right">操作</th></tr>
+{% for i in items %}
+<tr><td>{% if i.is_dir %}📁 <a href="{{file_base}}?space_id={{space.id}}&path={{i.rel}}">{{i.name}}</a>{% else %}📄 {{i.name}}{% endif %}</td><td>{{i.size}}</td><td>{{i.mtime.strftime('%Y-%m-%d %H:%M')}}</td><td class="right">
+<div class="row-actions"><button class="icon-btn" data-menu="fileMenu{{loop.index}}" type="button">⋯</button><div id="fileMenu{{loop.index}}" class="menu-pop row-menu">
+{% if i.is_dir %}<a href="{{file_base}}?space_id={{space.id}}&path={{i.rel}}">打开</a>{% endif %}
+{% if not i.is_dir and i.can_preview %}<a href="/preview/{{space.id}}/{{i.rel}}">预览</a>{% endif %}{% if not i.is_dir and i.can_download %}<a href="/download/{{space.id}}/{{i.rel}}">下载</a>{% endif %}{% if not i.is_dir and i.can_share %}<button type="button" data-modal="share{{loop.index}}">分享</button>{% endif %}
+{% if i.can_rename %}<button type="button" data-modal="rename{{loop.index}}">重命名</button>{% endif %}{% if i.can_move %}<button type="button" data-modal="move{{loop.index}}">移动</button>{% endif %}{% if i.can_delete %}<button type="button" data-modal="delete{{loop.index}}" class="danger-text">删除</button>{% endif %}</div></div>
+<div id="rename{{loop.index}}" class="modal"><div class="modal-card modal-sm"><div class="modal-head"><b>重命名</b><button type="button" class="modal-x" data-close>×</button></div><form method="post" action="/files/rename" class="form-grid"><input type="hidden" name="space_id" value="{{space.id}}"><input type="hidden" name="rel_path" value="{{i.rel}}"><label>新名称<input name="new_name" value="{{i.name}}"></label><div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn primary">保存</button></div></form></div></div>
+<div id="move{{loop.index}}" class="modal"><div class="modal-card modal-sm"><div class="modal-head"><b>移动</b><button type="button" class="modal-x" data-close>×</button></div><form method="post" action="/files/move" class="form-grid"><input type="hidden" name="space_id" value="{{space.id}}"><input type="hidden" name="rel_path" value="{{i.rel}}"><label>目标路径<input name="dest_path" placeholder="例如：部门资料/项目A"></label><div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn primary">移动</button></div></form></div></div>
+<div id="delete{{loop.index}}" class="modal"><div class="modal-card modal-sm"><div class="modal-head"><b>确认删除</b><button type="button" class="modal-x" data-close>×</button></div><p>确定删除 “{{i.name}}” 吗？</p><form method="post" action="/delete"><input type="hidden" name="space_id" value="{{space.id}}"><input type="hidden" name="rel_path" value="{{i.rel}}"><div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn danger">删除</button></div></form></div></div>
+{% if not i.is_dir and i.can_share %}
+<div id="share{{loop.index}}" class="modal">
+  <div class="modal-card share-modal">
+    <div class="modal-head"><b>分享文件</b><button type="button" class="modal-x" data-close>×</button></div>
+    <form method="post" action="/share" class="form-grid">
+      <input type="hidden" name="space_id" value="{{space.id}}">
+      <input type="hidden" name="rel_path" value="{{i.rel}}">
+      <input type="hidden" name="target_type" value="link">
+      <input type="hidden" name="target_id" value="">
+      <div class="grid-2">
+        <label class="wide">分享对象
+          <div class="combo-select">
+            <button type="button" class="combo-btn" data-dropdown="fileShareTarget{{loop.index}}"><span data-share-label>公开链接</span><b>▾</b></button>
+            <div id="fileShareTarget{{loop.index}}" class="combo-panel target-panel">
+              <input class="combo-search" placeholder="搜索用户、部门或空间" data-tree-search="fileShareTree{{loop.index}}">
+              <div id="fileShareTree{{loop.index}}" class="tree-picker inline-tree">
+                <div class="tree-line"><button type="button" class="tree-toggle blank"></button><span class="tree-node share-pick active" data-type="link" data-id="" data-label="公开链接">🔗 公开链接</span></div>
+                <div class="tree-line"><button type="button" class="tree-toggle blank"></button><span class="tree-node share-pick" data-type="all" data-id="" data-label="所有人">🌐 所有人</span></div>
+
+                <div class="tree-group open" data-tree-group>
+                  <div class="tree-line"><button type="button" class="tree-toggle" data-tree-toggle>▾</button><span class="tree-node">🏢 部门和用户</span></div>
+                  <div class="tree-children">
+                    {{ file_share_dept(0) }}
+                    {% for u in all_users if not u.department_id %}
+                    <div class="tree-line"><button type="button" class="tree-toggle blank"></button><span class="tree-node share-pick" data-type="user" data-id="{{u.id}}" data-label="用户：{{u.username}}">👤 {{u.display_name or u.username}}（无部门）</span></div>
+                    {% endfor %}
+                  </div>
+                </div>
+
+                <div class="tree-group" data-tree-group>
+                  <div class="tree-line"><button type="button" class="tree-toggle" data-tree-toggle>▸</button><span class="tree-node">👥 团队空间</span></div>
+                  <div class="tree-children">
+                    {% for s in all_spaces %}
+                    <div class="tree-line"><button type="button" class="tree-toggle blank"></button><span class="tree-node share-pick" data-type="space" data-id="{{s.id}}" data-label="空间：{{s.name}}">👥 {{s.name}}</span></div>
+                    {% endfor %}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </label>
+
+        <label>有效期
+          <select name="days">
+            <option value="36500">永久</option>
+            <option value="1">1天</option>
+            <option value="7" selected>7天</option>
+            <option value="30">30天</option>
+            <option value="90">90天</option>
+            <option value="180">180天</option>
+          </select>
+        </label>
+
+        <label>权限
+          <div class="combo-select">
+            <button type="button" class="combo-btn" data-dropdown="fileSharePerm{{loop.index}}"><span>选择权限</span><b>▾</b></button>
+            <div id="fileSharePerm{{loop.index}}" class="combo-panel perm-panel">
+              <label class="check-row"><input type="checkbox" name="can_download" checked>下载</label>
+              <label class="check-row"><input type="checkbox" name="can_upload">上传</label>
+              <label class="check-row"><input type="checkbox" name="can_write">编辑</label>
+            </div>
+          </div>
+        </label>
+      </div>
+      <div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn primary">创建分享</button></div>
+    </form>
+  </div>
+</div>
+{% endif %}
+</td></tr>{% endfor %}</table></div>
+<div id="modalMkdir" class="modal"><div class="modal-card modal-sm"><div class="modal-head"><b>新建文件夹</b><button type="button" class="modal-x" data-close>×</button></div><form method="post" action="/files/mkdir" class="form-grid"><input type="hidden" name="space_id" value="{{space.id}}"><input type="hidden" name="path" value="{{path}}"><label>文件夹名称<input name="name" placeholder="请输入文件夹名称"></label><label>本机路径（可选，填写后登记为共享文件夹）<div class="path-row"><input name="local_path" placeholder="可为空，普通新建文件夹" data-folder-target="mkdirLocalPath"><button type="button" class="btn ghost fake-folder-btn">选择文件夹<input type="file" webkitdirectory directory data-folder-input="mkdirLocalPath"></button></div></label><div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn primary">创建</button></div></form></div></div>
+<div id="modalUpload" class="modal"><div class="modal-card modal-sm"><div class="modal-head"><b>上传文件</b><button type="button" class="modal-x" data-close>×</button></div><form method="post" action="/files/upload" enctype="multipart/form-data" class="form-grid"><input type="hidden" name="space_id" value="{{space.id}}"><input type="hidden" name="path" value="{{path}}"><label>选择文件<input type="file" name="files" multiple data-file-list="uploadList"></label><div id="uploadList" class="file-list"></div><div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn primary">上传</button></div></form></div></div>
+{% endif %}
+{% endblock %}

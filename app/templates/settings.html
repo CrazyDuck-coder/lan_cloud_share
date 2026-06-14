@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head"><div><h2>{{theme.menus.settings}}</h2><p>配置共享根目录、端口、数据库连接等基础选项。</p></div></div>
+<form method="post" class="card form-grid">
+  <h3>基础设置</h3>
+  <div class="grid-2">
+    <label>共享根目录/盘符<div class="path-row"><input name="storage_root" value="{{config.storage_root}}" list="drives" data-folder-target="storageRoot"><button type="button" class="btn ghost fake-folder-btn">选择文件夹<input type="file" webkitdirectory directory data-folder-input="storageRoot"></button></div></label>
+    <datalist id="drives">{% for d in drives %}<option value="{{d}}">{% endfor %}</datalist>
+    <label>服务端口<input name="port" value="{{config.port}}"></label>
+    <label>数据库类型<select name="db_backend"><option value="sqlite" {% if config.db_backend=='sqlite' %}selected{% endif %}>SQLite</option><option value="mysql" {% if config.db_backend=='mysql' %}selected{% endif %}>MySQL</option><option value="postgresql" {% if config.db_backend=='postgresql' %}selected{% endif %}>PostgreSQL</option></select></label>
+    <label>SQLite 数据库路径<input name="db_path" value="{{config.db_path}}"></label>
+    <label>MySQL/PostgreSQL 连接串<input name="db_url" value="{{config.db_url}}" placeholder="例如 mysql+pymysql://user:pwd@host/db"></label>
+    <label>系统密钥<input name="secret_key" value="{{config.secret_key}}"></label>
+    <label>重启命令<input name="restart_command" value="{{config.restart_command}}" placeholder="可选，例如 start cmd /k python main.py"></label><label>OnlyOffice 地址<input name="onlyoffice_url" value="{{config.onlyoffice_url}}" placeholder="例如 http://服务器IP:8080/"></label><label>Collabora 地址<input name="collabora_url" value="{{config.collabora_url}}" placeholder="例如 http://服务器IP:9980/"></label>
+  </div>
+  <p class="muted">当前版本默认使用 SQLite。这里可预先保存 MySQL/PostgreSQL 配置，后续接入相应驱动后可切换。端口、数据库、共享根目录保存后建议重启服务。</p>
+  <div class="modal-foot"><button class="btn primary">保存设置</button></div>
+</form>
+<div class="card action-row">
+  <form method="post" action="/restart" onsubmit="return confirm('将退出当前服务；如配置了重启命令会尝试自动重启，确定？')"><button class="btn primary">重启服务</button></form>
+  <form method="post" action="/shutdown" onsubmit="return confirm('服务会退出，需要重新运行 python main.py，确定？')"><button class="btn danger">退出服务</button></form>
+</div>
+{% endblock %}

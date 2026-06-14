@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head"><div><h2>{{theme.menus.theme}}</h2><p>配置系统名称、主题色、字体和菜单名称。</p></div></div>
+<form method="post" action="/theme/save" class="card form-grid">
+  <div class="grid-2">
+    <label>系统名称<input name="logo" value="{{theme.logo}}"></label>
+    <label>主题色<input type="color" name="accent" value="{{theme.accent}}"></label>
+    <label>字体大小<input name="font_size" value="{{theme.font_size}}"></label>
+    <label>字体<select name="font_family">{% for f in fonts %}<option value="{{f}}" {% if theme.font_family==f %}selected{% endif %}>{{f}}</option>{% endfor %}</select></label>
+  </div>
+  <h3>菜单名称</h3>
+  <div class="grid-3">{% for k,v in theme.menus.items() %}<label>{{k}}<input name="menu_{{k}}" value="{{v}}"></label>{% endfor %}</div>
+  <div class="modal-foot"><button class="btn primary">保存主题</button></div>
+</form>
+{% endblock %}

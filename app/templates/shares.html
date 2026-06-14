@@ -1,0 +1,104 @@
+
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head"><div><h2>{{theme.menus.shares}}</h2><p>管理可分享文件和已创建的分享链接。</p></div></div>
+
+<div class="card"><h3>可分享文件</h3>
+<div class="table-card inner"><table><tr><th>文件</th><th>空间</th><th class="right">操作</th></tr>
+{% for f in uploads %}
+<tr><td>{{f.rel}}</td><td>{{f.space.name}}(ID {{f.space.id}})</td><td class="right">
+<button class="btn primary small" data-modal="shareFile{{loop.index}}">创建分享</button>
+
+<div id="shareFile{{loop.index}}" class="modal">
+  <div class="modal-card share-modal">
+    <div class="modal-head"><b>创建分享</b><button type="button" class="modal-x" data-close>×</button></div>
+    <form method="post" action="/share" class="form-grid">
+      <input type="hidden" name="space_id" value="{{f.space.id}}">
+      <input type="hidden" name="rel_path" value="{{f.rel}}">
+      <input type="hidden" name="target_type" value="link">
+      <input type="hidden" name="target_id" value="">
+      <div class="grid-2">
+        <label class="wide">分享对象
+          <div class="combo-select">
+            <button type="button" class="combo-btn" data-dropdown="shareTarget{{loop.index}}"><span data-share-label>公开链接</span><b>▾</b></button>
+            <div id="shareTarget{{loop.index}}" class="combo-panel target-panel">
+              <input class="combo-search" placeholder="搜索用户、部门或空间" data-tree-search="shareTree{{loop.index}}">
+              <div id="shareTree{{loop.index}}" class="tree-picker inline-tree">
+                <div class="tree-line"><button type="button" class="tree-toggle blank"></button><span class="tree-node share-pick active" data-type="link" data-id="" data-label="公开链接">🔗 公开链接</span></div>
+                <div class="tree-line"><button type="button" class="tree-toggle blank"></button><span class="tree-node share-pick" data-type="all" data-id="" data-label="所有人">🌐 所有人</span></div>
+
+                <div class="tree-group open" data-tree-group>
+                  <div class="tree-line"><button type="button" class="tree-toggle" data-tree-toggle>▾</button><span class="tree-node">🏢 部门和用户</span></div>
+                  <div class="tree-children">
+                    {% macro dept_share(parent) %}
+                      {% for d in all_deps if (d.parent_id or 0)==parent %}
+                      <div class="tree-group" data-tree-group>
+                        <div class="tree-line"><button type="button" class="tree-toggle" data-tree-toggle>▸</button><span class="tree-node share-pick" data-type="department" data-id="{{d.id}}" data-label="部门：{{d.name}}">🏢 {{d.name}}</span></div>
+                        <div class="tree-children">
+                          {% for u in all_users if u.department_id==d.id %}
+                          <div class="tree-line"><button type="button" class="tree-toggle blank"></button><span class="tree-node share-pick" data-type="user" data-id="{{u.id}}" data-label="用户：{{u.username}}">👤 {{u.display_name or u.username}}</span></div>
+                          {% endfor %}
+                          {{ dept_share(d.id) }}
+                        </div>
+                      </div>
+                      {% endfor %}
+                    {% endmacro %}
+                    {{ dept_share(0) }}
+                    {% for u in all_users if not u.department_id %}
+                    <div class="tree-line"><button type="button" class="tree-toggle blank"></button><span class="tree-node share-pick" data-type="user" data-id="{{u.id}}" data-label="用户：{{u.username}}">👤 {{u.display_name or u.username}}（无部门）</span></div>
+                    {% endfor %}
+                  </div>
+                </div>
+
+                <div class="tree-group" data-tree-group>
+                  <div class="tree-line"><button type="button" class="tree-toggle" data-tree-toggle>▸</button><span class="tree-node">👥 团队空间</span></div>
+                  <div class="tree-children">
+                    {% for s in all_spaces %}
+                    <div class="tree-line"><button type="button" class="tree-toggle blank"></button><span class="tree-node share-pick" data-type="space" data-id="{{s.id}}" data-label="空间：{{s.name}}">👥 {{s.name}}</span></div>
+                    {% endfor %}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </label>
+
+        <label>有效期
+          <select name="days">
+            <option value="36500">永久</option>
+            <option value="1">1天</option>
+            <option value="7" selected>7天</option>
+            <option value="30">30天</option>
+            <option value="90">90天</option>
+            <option value="180">180天</option>
+          </select>
+        </label>
+
+        <label>权限
+          <div class="combo-select">
+            <button type="button" class="combo-btn" data-dropdown="sharePerm{{loop.index}}"><span>选择权限</span><b>▾</b></button>
+            <div id="sharePerm{{loop.index}}" class="combo-panel perm-panel">
+              <label class="check-row"><input type="checkbox" name="can_download" checked>下载</label>
+              <label class="check-row"><input type="checkbox" name="can_upload">上传</label>
+              <label class="check-row"><input type="checkbox" name="can_write">编辑</label>
+            </div>
+          </div>
+        </label>
+      </div>
+      <div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn primary">创建</button></div>
+    </form>
+  </div>
+</div>
+</td></tr>
+{% endfor %}
+{% if not uploads %}<tr><td colspan="3" class="center">当前没有可分享文件。需要拥有“分享”权限后才会显示。</td></tr>{% endif %}
+</table></div></div>
+
+<div class="table-card"><table><tr><th>文件</th><th>目标</th><th>链接</th><th>权限</th><th>过期</th><th class="right">操作</th></tr>
+{% for s in shares %}
+{% set link = request.url.scheme ~ '://' ~ request.url.netloc ~ '/s/' ~ s.token %}<tr><td>{{s.rel_path}}</td><td>{{s.target_type}}:{{s.target_id or ''}}</td><td><code>{{link}}</code></td><td>下载{{s.can_download}} 上传{{s.can_upload}} 编辑{{s.can_write}}</td><td>{{s.expires_at or '永久'}}</td><td class="right"><div class="row-actions"><button class="icon-btn" data-menu="shareMenu{{loop.index}}" type="button">⋯</button><div id="shareMenu{{loop.index}}" class="menu-pop row-menu"><button type="button" data-copy-text="{{link}}">复制链接</button><button type="button" data-modal="editShare{{loop.index}}">修改</button><button type="button" data-modal="delShare{{loop.index}}" class="danger-text">删除</button></div></div>
+<div id="editShare{{loop.index}}" class="modal"><div class="modal-card modal-sm"><div class="modal-head"><b>修改分享</b><button type="button" class="modal-x" data-close>×</button></div><form method="post" action="/shares/edit" class="form-grid"><input type="hidden" name="share_id" value="{{s.id}}"><label>有效期<select name="days"><option value="36500" {% if not s.expires_at %}selected{% endif %}>永久</option><option value="1">1天</option><option value="7">7天</option><option value="30">30天</option><option value="90">90天</option><option value="180">180天</option></select></label><div class="checks"><label class="check-inline"><input type="checkbox" name="can_download" {% if s.can_download %}checked{% endif %}>下载</label><label class="check-inline"><input type="checkbox" name="can_upload" {% if s.can_upload %}checked{% endif %}>上传</label><label class="check-inline"><input type="checkbox" name="can_write" {% if s.can_write %}checked{% endif %}>编辑</label></div><div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn primary">保存</button></div></form></div></div>
+<div id="delShare{{loop.index}}" class="modal"><div class="modal-card modal-sm"><div class="modal-head"><b>删除分享</b><button type="button" class="modal-x" data-close>×</button></div><p>确定删除这个分享？</p><form method="post" action="/shares/delete"><input type="hidden" name="share_id" value="{{s.id}}"><div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn danger">删除</button></div></form></div></div></td></tr>
+{% endfor %}
+</table></div>
+{% endblock %}

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{theme.logo}}</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>:root{--accent:{{theme.accent}};--font-size:{{theme.font_size}}px;--font-family:"{{theme.font_family}}",Arial,"Microsoft YaHei",sans-serif}</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-icon">☁</span><span>{{theme.logo}}</span></div>
+    <nav>
+      <a href="/files">📁 <span>{{theme.menus.files}}</span></a>
+      <a href="/printers">🖨 <span>{{theme.menus.printers}}</span></a>
+      {% if user.role=='admin' %}
+      <a href="/users">👤 <span>{{theme.menus.users}}</span></a>
+      <a href="/departments">🏢 <span>{{theme.menus.departments}}</span></a>
+      {% endif %}
+      <a href="/permissions">🔐 <span>{{theme.menus.permissions}}</span></a>
+      <a href="/spaces">👥 <span>{{theme.menus.spaces}}</span></a>
+      <a href="/shares">🔗 <span>{{theme.menus.shares}}</span></a>
+      {% if user.role=='admin' %}
+      <a href="/logs">📜 <span>{{theme.menus.logs}}</span></a>
+      <a href="/theme">🎨 <span>{{theme.menus.theme}}</span></a>
+      {% endif %}
+      <a href="/versions">🕓 <span>{{theme.menus.versions}}</span></a>
+      {% if user.role=='admin' %}
+      <a href="/backup">💾 <span>{{theme.menus.backup}}</span></a>
+      <a href="/settings">⚙ <span>{{theme.menus.settings}}</span></a>
+      {% endif %}
+    </nav>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div class="top-title">{{theme.logo}}</div>
+      <div class="top-actions">
+        <div class="user-pop">
+          <button class="user-name" type="button" data-menu="userQuickMenu">{{user.display_name or user.username}} ▾</button>
+          <div id="userQuickMenu" class="menu-pop">
+            <button type="button" data-modal="modalDisplayName">修改用户名</button>
+            <button type="button" data-modal="modalPassword">修改密码</button>
+          </div>
+        </div>
+        <a class="logout-link" href="/logout">退出</a>
+      </div>
+    </header>
+    <section class="content">{% block content %}{% endblock %}</section>
+  </main>
+</div>
+
+<div id="modalDisplayName" class="modal"><div class="modal-card modal-sm"><div class="modal-head"><b>修改用户名</b><button type="button" class="modal-x" data-close>×</button></div>
+<form method="post" action="/profile" class="form-grid">
+<label>显示名称<input name="display_name" value="{{user.display_name or user.username}}" placeholder="显示名称"></label>
+<input type="hidden" name="old_password" value=""><input type="hidden" name="new_password" value="">
+<div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn primary">保存</button></div>
+</form></div></div>
+
+<div id="modalPassword" class="modal"><div class="modal-card modal-sm"><div class="modal-head"><b>修改密码</b><button type="button" class="modal-x" data-close>×</button></div>
+<form method="post" action="/profile" class="form-grid">
+<input type="hidden" name="display_name" value="{{user.display_name or user.username}}">
+<label>旧密码<input type="password" name="old_password" placeholder="请输入旧密码"></label>
+<label>新密码<input type="password" name="new_password" placeholder="请输入新密码"></label>
+<div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn primary">保存</button></div>
+</form></div></div>
+
+<script src="/static/app.js"></script>
+</body></html>

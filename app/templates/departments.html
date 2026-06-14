@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head"><div><h2>{{theme.menus.departments}}</h2><p>树状维护组织架构，可编辑、移动和删除部门。</p></div><button class="btn primary" data-modal="modalAddDep">添加部门</button></div>
+<div class="split">
+  <div class="card tree-card">
+    <h3>部门树</h3>
+    <input class="combo-search" placeholder="搜索部门" data-tree-search="deptTree">
+    <div id="deptTree" class="tree-picker inline-tree">
+    {% macro dept_node(parent) %}
+      {% for d in deps if (d.parent_id or 0)==parent %}
+        <div class="tree-group" data-tree-group>
+          <div class="tree-line"><button type="button" class="tree-toggle" data-tree-toggle>▸</button><span class="tree-node">🏢 {{d.name}} <em>ID {{d.id}}</em></span></div>
+          <div class="tree-children">{{ dept_node(d.id) }}</div>
+        </div>
+      {% endfor %}
+    {% endmacro %}
+    {{ dept_node(0) }}
+    </div>
+  </div>
+  <div class="table-card flex-table">
+    <table><tr><th>ID</th><th>部门</th><th>上级ID</th><th class="right">操作</th></tr>
+    {% for d in deps %}<tr><td>{{d.id}}</td><td>{{d.name}}</td><td>{{d.parent_id or ''}}</td><td class="right"><div class="row-actions"><button class="icon-btn" data-menu="depMenu{{loop.index}}" type="button">⋯</button><div id="depMenu{{loop.index}}" class="menu-pop row-menu"><button type="button" data-modal="editDep{{loop.index}}">编辑/移动</button><button type="button" data-modal="delDep{{loop.index}}" class="danger-text">删除</button></div></div>
+    <div id="editDep{{loop.index}}" class="modal"><div class="modal-card modal-sm"><div class="modal-head"><b>编辑部门</b><button type="button" class="modal-x" data-close>×</button></div><form method="post" action="/departments/edit" class="form-grid"><input type="hidden" name="dep_id" value="{{d.id}}"><label>部门名称<input name="name" value="{{d.name}}"></label><label>上级部门<select name="parent_id"><option value="0">无上级</option>{% for x in deps %}{% if x.id!=d.id %}<option value="{{x.id}}" {% if d.parent_id==x.id %}selected{% endif %}>{{x.name}}</option>{% endif %}{% endfor %}</select></label><div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn primary">保存</button></div></form></div></div>
+    <div id="delDep{{loop.index}}" class="modal"><div class="modal-card modal-sm"><div class="modal-head"><b>删除部门</b><button type="button" class="modal-x" data-close>×</button></div><p>确定删除 {{d.name}}？部门下用户会变为无部门。</p><form method="post" action="/departments/delete"><input type="hidden" name="dep_id" value="{{d.id}}"><div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn danger">删除</button></div></form></div></div>
+    </td></tr>{% endfor %}</table>
+  </div>
+</div>
+<div id="modalAddDep" class="modal"><div class="modal-card modal-sm"><div class="modal-head"><b>添加部门</b><button type="button" class="modal-x" data-close>×</button></div><form method="post" class="form-grid"><label>部门名称<input name="name"></label><label>上级部门<select name="parent_id"><option value="0">无上级</option>{% for d in deps %}<option value="{{d.id}}">{{d.name}}</option>{% endfor %}</select></label><div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn primary">添加</button></div></form></div></div>
+{% endblock %}

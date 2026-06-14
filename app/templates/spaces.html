@@ -1,0 +1,54 @@
+
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <div><h2>{{theme.menus.spaces}}</h2><p>团队空间由管理员创建并授权，和共享文件夹相互独立。</p></div>
+  {% if user.role=='admin' %}<button class="btn primary" data-modal="modalAddSpace">创建团队空间</button>{% endif %}
+</div>
+<div class="card info"><b>说明：</b>普通用户只能查看管理员分配给自己的团队空间，不能创建或管理团队空间；共享文件夹请到“共享文件/文件夹”创建。</div>
+<div class="table-card"><table>
+<tr><th>ID</th><th>团队空间</th><th>路径</th><th>备注</th><th class="right">操作</th></tr>
+{% for s in spaces %}
+<tr><td>{{s.id}}</td><td>{{s.name}}</td><td>{{s.root_path}}</td><td>{{s.note}}</td>
+<td class="right">
+  <div class="row-actions"><button class="icon-btn" type="button" data-menu="spMenu{{loop.index}}">⋯</button>
+    <div id="spMenu{{loop.index}}" class="menu-pop row-menu">
+      <a href="/team_files?space_id={{s.id}}">打开团队空间</a>
+      {% if user.role=='admin' or (s.kind!='team' and s.owner_id==user.id) %}
+      <button type="button" data-modal="editSp{{loop.index}}">编辑</button>
+      <button type="button" data-modal="delSp{{loop.index}}" class="danger-text">删除记录</button>
+      {% endif %}
+    </div>
+  </div>
+  {% if user.role=='admin' or (s.kind!='team' and s.owner_id==user.id) %}
+  <div id="editSp{{loop.index}}" class="modal"><div class="modal-card"><div class="modal-head"><b>编辑共享</b><button type="button" class="modal-x" data-close>×</button></div>
+    <form method="post" action="/spaces/edit" class="form-grid">
+      <input type="hidden" name="space_id" value="{{s.id}}">
+      <div class="grid-2">
+        <label>名称<input name="name" value="{{s.name}}"></label>
+        <label>团队空间本机路径<div class="path-row"><input name="root_path" value="{{s.root_path}}" data-folder-target="editPath{{loop.index}}"><button type="button" class="btn ghost fake-folder-btn">选择文件夹<input type="file" webkitdirectory directory data-folder-input="editPath{{loop.index}}"></button></div></label>
+        <label>备注<input name="note" value="{{s.note}}"></label>
+      </div>
+      <div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn primary">保存</button></div>
+    </form>
+  </div></div>
+  <div id="delSp{{loop.index}}" class="modal"><div class="modal-card modal-sm"><div class="modal-head"><b>删除共享记录</b><button type="button" class="modal-x" data-close>×</button></div>
+    <p>只删除系统记录，不删除磁盘文件。确定删除 {{s.name}}？</p>
+    <form method="post" action="/spaces/delete"><input type="hidden" name="space_id" value="{{s.id}}"><div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn danger">删除</button></div></form>
+  </div></div>
+  {% endif %}
+</td></tr>
+{% endfor %}
+</table></div>
+
+<div id="modalAddSpace" class="modal"><div class="modal-card"><div class="modal-head"><b>创建团队空间</b><button type="button" class="modal-x" data-close>×</button></div>
+<form method="post" class="form-grid">
+  <div class="grid-2">
+    <label>名称<input name="name" placeholder="共享名称"></label>
+    <input type="hidden" name="kind" value="team">
+    <label>团队空间本机路径<div class="path-row"><input name="root_path" placeholder="可为空，默认在系统根目录创建" data-folder-target="addSpacePath"><button type="button" class="btn ghost fake-folder-btn">选择文件夹<input type="file" webkitdirectory directory data-folder-input="addSpacePath"></button></div></label>
+    <label>备注<input name="note"></label>
+  </div>
+  <div class="modal-foot"><button type="button" class="btn ghost" data-close>取消</button><button class="btn primary">创建</button></div>
+</form></div></div>
+{% endblock %}
